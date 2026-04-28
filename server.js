@@ -1,10 +1,8 @@
-// server.js — EvalAI proxy server (Gemini version - FREE)
+
 const http  = require('http');
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
-
-// Get your FREE Gemini API key at: https://aistudio.google.com/app/apikey
 const API_KEY = '';
 const PORT    = 3002;
 
