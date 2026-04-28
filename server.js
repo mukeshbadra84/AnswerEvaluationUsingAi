@@ -5,7 +5,7 @@ const fs    = require('fs');
 const path  = require('path');
 
 // Get your FREE Gemini API key at: https://aistudio.google.com/app/apikey
-const API_KEY = 'AQ.Ab8RN6JttjOQ_TvohDXnjk0wKDQgOnOiKAM2x7xHM0oah9-9Kg';
+const API_KEY = '';
 const PORT    = 3002;
 
 const server = http.createServer((req, res) => {
