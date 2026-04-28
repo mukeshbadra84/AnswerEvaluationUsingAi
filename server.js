@@ -3,7 +3,10 @@ const http  = require('http');
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
-const API_KEY = '';
+require('dotenv').config();
+
+
+const API_KEY = process.env.GEMINI_API_KEY;
 const PORT    = 3002;
 
 const server = http.createServer((req, res) => {
