@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EvalAI — Answer Evaluator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #0f0e0c;
+    --paper: #f5f2eb;
+    --cream: #ede9df;
+    --rule: #d6d0c4;
+    --accent: #c2410c;
+    --accent-light: #fff0eb;
+    --accent2: #15803d;
+    --accent2-light: #f0fdf4;
+    --warn: #b45309;
+    --warn-light: #fffbeb;
+    --muted: #78716c;
+    --highlight-err: #fef2f2;
+    --highlight-err-border: #fca5a5;
+    --highlight-ok: #f0fdf4;
+    --tag-grammar: #dbeafe;
+    --tag-grammar-text: #1e40af;
+    --tag-content: #f3e8ff;
+    --tag-content-text: #7e22ce;
+    --tag-structure: #dcfce7;
+    --tag-structure-text: #15803d;
+    --radius: 6px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    font-family: 'Instrument Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1.5px solid var(--ink);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    background: var(--paper);
+  }
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .logo span {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--accent);
+    color: #fff;
+    padding: 2px 7px;
+    border-radius: 3px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    position: relative;
+    top: -2px;
+  }
+  .header-meta {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── Main layout ── */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 32px 32px;
+    gap: 20px;
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* ── Workspace (top split) ── */
+  .workspace {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: #fff;
+    min-height: 400px;
+  }
+
+  /* ── Panel shared ── */
+  .panel { display: flex; flex-direction: column; }
+  .panel:first-child { border-right: 1.5px solid var(--ink); }
+
+  .panel-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--cream);
+  }
+  .panel-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .panel-title::before {
+    content: '';
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--rule);
+  }
+  .panel:first-child .panel-title::before { background: var(--accent); }
+  .panel:last-child .panel-title::before { background: var(--accent2); }
+
+  /* ── Left panel ── */
+  .input-area { display: flex; flex-direction: column; height: 100%; }
+
+  .question-block {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+  }
+  .question-block textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+    resize: none;
+    line-height: 1.6;
+    min-height: 72px;
+  }
+  .question-block textarea::placeholder { color: #c4bfb5; }
+
+  .answer-block {
+    flex: 1;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .answer-block textarea {
+    flex: 1;
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+    resize: none;
+    line-height: 1.8;
+    min-height: 160px;
+  }
+  .answer-block textarea::placeholder { color: #c4bfb5; }
+
+  .upload-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--rule);
+    margin-top: 4px;
+  }
+  .upload-btn {
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .upload-btn:hover { border-color: var(--ink); color: var(--ink); }
+  #file-input { display: none; }
+  .file-name { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  /* ── Right panel ── */
+  .answer-display {
+    flex: 1;
+    padding: 20px;
+    font-size: 14px;
+    line-height: 1.9;
+    color: var(--ink);
+    min-height: 200px;
+    position: relative;
+    overflow-y: auto;
+  }
+  .answer-display.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--rule);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    text-align: center;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .empty-icon { font-size: 28px; opacity: 0.4; }
+
+  .err-highlight {
+    background: var(--highlight-err);
+    border-bottom: 2px solid #f87171;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.2s;
+  }
+  .err-highlight:hover { background: #fee2e2; }
+  .warn-highlight {
+    background: var(--warn-light);
+    border-bottom: 2px solid #fbbf24;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+
+  .legend-row {
+    padding: 10px 20px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    gap: 16px;
+    background: var(--cream);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .legend-dot { width: 20px; height: 3px; border-radius: 2px; }
+  .dot-err { background: #f87171; }
+  .dot-warn { background: #fbbf24; }
+
+  /* ── Evaluate button ── */
+  .eval-bar { display: flex; justify-content: center; gap: 12px; }
+  .btn-evaluate {
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-evaluate:hover { background: #2c2a27; transform: translateY(-1px); }
+  .btn-evaluate:active { transform: translateY(0); }
+  .btn-evaluate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-reset {
+    background: none;
+    color: var(--muted);
+    border: 1.5px solid var(--rule);
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 14px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-reset:hover { border-color: var(--ink); color: var(--ink); }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .btn-evaluate.loading .spinner { display: block; }
+  .btn-evaluate.loading .btn-label { opacity: 0.7; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Scoring area ── */
+  .scoring-area {
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: #fff;
+    display: none;
+    animation: fadeUp 0.4s ease;
+  }
+  .scoring-area.visible { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .scoring-header {
+    padding: 14px 24px;
+    background: var(--ink);
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .scoring-title { font-family: 'DM Serif Display', serif; font-size: 18px; }
+  .scoring-subtitle { font-size: 12px; font-family: 'DM Mono', monospace; opacity: 0.5; margin-top: 1px; }
+
+  .final-score-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--accent);
+    padding: 8px 20px;
+    border-radius: 8px;
+  }
+  .score-num { font-family: 'DM Serif Display', serif; font-size: 28px; line-height: 1; color: #fff; }
+  .score-denom { font-size: 10px; font-family: 'DM Mono', monospace; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .section-scores {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .section-card {
+    padding: 20px 24px;
+    border-right: 1px solid var(--rule);
+  }
+  .section-card:last-child { border-right: none; }
+  .section-label { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .section-tag {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 3px 9px;
+    border-radius: 3px;
+  }
+  .tag-grammar { background: var(--tag-grammar); color: var(--tag-grammar-text); }
+  .tag-content { background: var(--tag-content); color: var(--tag-content-text); }
+  .tag-structure { background: var(--tag-structure); color: var(--tag-structure-text); }
+
+  .score-bar-wrap {
+    height: 6px;
+    background: var(--cream);
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .fill-grammar { background: #3b82f6; }
+  .fill-content { background: #9333ea; }
+  .fill-structure { background: #22c55e; }
+
+  .score-frac { font-family: 'DM Serif Display', serif; font-size: 28px; line-height: 1; color: var(--ink); margin-bottom: 4px; }
+  .score-frac span { font-size: 14px; color: var(--muted); font-family: 'Instrument Sans', sans-serif; }
+
+  .error-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .error-item { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: flex-start; }
+  .error-item::before { content: '→'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+
+  .feedback-row {
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .final-total {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    background: var(--cream);
+    text-align: center;
+    gap: 4px;
+  }
+  .final-total-label { font-size: 11px; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .final-total-num { font-family: 'DM Serif Display', serif; font-size: 52px; line-height: 1; color: var(--accent); }
+  .final-total-denom { font-size: 14px; color: var(--muted); }
+  .grade-pill { font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; margin-top: 4px; }
+
+  .feedback-section { display: flex; flex-direction: column; gap: 12px; }
+  .feedback-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .feedback-title::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+
+  .suggestion-list { display: flex; flex-direction: column; gap: 8px; }
+  .suggestion-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 14px;
+    background: var(--cream);
+    border-radius: var(--radius);
+    border-left: 3px solid var(--accent);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  .suggestion-item.positive { border-left-color: var(--accent2); background: var(--accent2-light); }
+  .sug-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    padding: 6px 10px;
+    border-radius: 5px;
+    pointer-events: none;
+    z-index: 999;
+    max-width: 260px;
+    line-height: 1.5;
+    display: none;
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+
+  @media (max-width: 900px) {
+    .workspace { grid-template-columns: 1fr; }
+    .panel:first-child { border-right: none; border-bottom: 1.5px solid var(--ink); }
+    .section-scores { grid-template-columns: 1fr; }
+    .section-card { border-right: none; border-bottom: 1px solid var(--rule); }
+    .feedback-row { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+    header { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">EvalAI <span>Beta</span></div>
+  <div class="header-meta">AI-Powered Answer Evaluation</div>
+</header>
+
+<main>
+  <div class="workspace">
+    <!-- LEFT: Input -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Input</div>
+      </div>
+      <div class="input-area">
+        <div class="question-block">
+          <label class="field-label">Question</label>
+          <textarea id="question-input" rows="3" placeholder="Enter the question to evaluate against…"></textarea>
+        </div>
+        <div class="answer-block">
+          <label class="field-label">Student Answer</label>
+          <textarea id="answer-input" placeholder="Type or paste the answer here, or upload a file below…"></textarea>
+          <div class="upload-row">
+            <button class="upload-btn" onclick="document.getElementById('file-input').click()">⊕ Upload file</button>
+            <input type="file" id="file-input" accept=".txt,.pdf">
+            <span class="file-name" id="file-name-display">PDF or TXT supported</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Annotated output -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Annotated Answer</div>
+      </div>
+      <div class="answer-display empty-state" id="answer-display">
+        <div class="empty-icon">◎</div>
+        <div>Evaluated answer with highlights<br>will appear here</div>
+      </div>
+      <div class="legend-row" id="legend-row" style="display:none;">
+        <div class="legend-item"><div class="legend-dot dot-err"></div>Grammar / factual error</div>
+        <div class="legend-item"><div class="legend-dot dot-warn"></div>Weak phrasing</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Evaluate button -->
+  <div class="eval-bar">
+    <button class="btn-evaluate" id="btn-evaluate" onclick="runEvaluation()">
+      <span class="btn-label">Evaluate Answer</span>
+      <div class="spinner"></div>
+    </button>
+    <button class="btn-reset" onclick="resetAll()">Reset</button>
+  </div>
+
+  <!-- Scoring area -->
+  <div class="scoring-area" id="scoring-area">
+    <div class="scoring-header">
+      <div>
+        <div class="scoring-title">Evaluation Report</div>
+        <div class="scoring-subtitle" id="scoring-subtitle">—</div>
+      </div>
+      <div class="final-score-badge">
+        <div class="score-num" id="header-score">—</div>
+        <div class="score-denom">out of 10</div>
+      </div>
+    </div>
+
+    <div class="section-scores">
+      <div class="section-card">
+        <div class="section-label"><span class="section-tag tag-grammar">Grammar</span></div>
+        <div class="score-frac" id="grammar-score">—<span>/10</span></div>
+        <div class="score-bar-wrap"><div class="score-bar-fill fill-grammar" id="grammar-bar"></div></div>
+        <div class="error-list" id="grammar-errors"></div>
+      </div>
+      <div class="section-card">
+        <div class="section-label"><span class="section-tag tag-content">Content</span></div>
+        <div class="score-frac" id="content-score">—<span>/10</span></div>
+        <div class="score-bar-wrap"><div class="score-bar-fill fill-content" id="content-bar"></div></div>
+        <div class="error-list" id="content-errors"></div>
+      </div>
+      <div class="section-card">
+        <div class="section-label"><span class="section-tag tag-structure">Structure</span></div>
+        <div class="score-frac" id="structure-score">—<span>/10</span></div>
+        <div class="score-bar-wrap"><div class="score-bar-fill fill-structure" id="structure-bar"></div></div>
+        <div class="error-list" id="structure-errors"></div>
+      </div>
+    </div>
+
+    <div class="feedback-row">
+      <div class="final-total">
+        <div class="final-total-label">Final Score</div>
+        <div class="final-total-num" id="final-score-num">—</div>
+        <div class="final-total-denom">out of 10</div>
+        <div class="grade-pill" id="grade-pill"></div>
+      </div>
+      <div class="feedback-section">
+        <div class="feedback-title">Suggestions &amp; Feedback</div>
+        <div class="suggestion-list" id="suggestion-list"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ── File upload ──
+document.getElementById('file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('file-name-display').textContent = file.name;
+  if (file.type === 'text/plain') {
+    const text = await file.text();
+    document.getElementById('answer-input').value = text;
+  } else if (file.type === 'application/pdf') {
+    document.getElementById('answer-input').value = '[PDF uploaded: ' + file.name + ']';
+    document.getElementById('file-name-display').textContent = file.name + ' (PDF noted)';
+  }
+});
+
+// ── Tooltip ──
+const tooltip = document.getElementById('tooltip');
+document.addEventListener('mousemove', (e) => {
+  tooltip.style.left = (e.clientX + 12) + 'px';
+  tooltip.style.top  = (e.clientY + 12) + 'px';
+});
+function showTooltip(msg) { tooltip.textContent = msg; tooltip.style.display = 'block'; }
+function hideTooltip()    { tooltip.style.display = 'none'; }
+
+// ── Main evaluation ──
+async function runEvaluation() {
+  const question = document.getElementById('question-input').value.trim();
+  const answer   = document.getElementById('answer-input').value.trim();
+  if (!question || !answer) { alert('Please enter both a question and an answer.'); return; }
+
+  const btn = document.getElementById('btn-evaluate');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  try {
+    const systemPrompt = `You are an expert academic answer evaluator. Return ONLY valid JSON — no markdown, no backticks, no prose.
+
+Return this exact shape:
+{
+  "grammar":   { "score": <0-10>, "issues": ["..."] },
+  "content":   { "score": <0-10>, "issues": ["..."] },
+  "structure": { "score": <0-10>, "issues": ["..."] },
+  "final_score": <0-10 weighted average>,
+  "annotations": [
+    { "phrase": "<exact substring from answer>", "type": "error|warning", "note": "<tooltip text>" }
+  ],
+  "suggestions": [
+    { "type": "improvement|positive", "text": "..." }
+  ]
+}
+Rules: annotations.phrase must be an exact substring of the answer. Include 2-5 annotations and 3-5 suggestions.`;
+
+    // ↓↓ This hits the local proxy server (server.js) ↓↓
+    const response = await fetch('http://localhost:3002/api/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, answer, systemPrompt })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+
+    const clean = data.result.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+    renderResults(result, answer);
+
+  } catch (err) {
+    alert('Evaluation failed: ' + err.message);
+    console.error(err);
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+}
+
+function renderResults(result, answer) {
+  const display = document.getElementById('answer-display');
+  display.classList.remove('empty-state');
+  display.innerHTML = buildAnnotatedHTML(answer, result.annotations || []);
+  document.getElementById('legend-row').style.display = 'flex';
+
+  display.querySelectorAll('[data-note]').forEach(el => {
+    el.addEventListener('mouseenter', () => showTooltip(el.dataset.note));
+    el.addEventListener('mouseleave', hideTooltip);
+  });
+
+  const sa = document.getElementById('scoring-area');
+  sa.classList.add('visible');
+  document.getElementById('header-score').textContent = result.final_score.toFixed(1);
+  document.getElementById('scoring-subtitle').textContent =
+    'Evaluated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  setSection('grammar',   result.grammar);
+  setSection('content',   result.content);
+  setSection('structure', result.structure);
+  document.getElementById('final-score-num').textContent = result.final_score.toFixed(1);
+
+  const grade = getGrade(result.final_score);
+  const pill  = document.getElementById('grade-pill');
+  pill.textContent     = grade.label;
+  pill.style.background = grade.bg;
+  pill.style.color      = grade.color;
+
+  const list = document.getElementById('suggestion-list');
+  list.innerHTML = '';
+  (result.suggestions || []).forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'suggestion-item' + (s.type === 'positive' ? ' positive' : '');
+    div.innerHTML = `<span class="sug-icon">${s.type === 'positive' ? '✓' : '→'}</span>${escapeHTML(s.text)}`;
+    list.appendChild(div);
+  });
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.getElementById('grammar-bar').style.width   = (result.grammar.score   * 10) + '%';
+    document.getElementById('content-bar').style.width   = (result.content.score   * 10) + '%';
+    document.getElementById('structure-bar').style.width = (result.structure.score * 10) + '%';
+  }));
+
+  sa.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function setSection(key, data) {
+  document.getElementById(key + '-score').innerHTML = data.score.toFixed(1) + '<span>/10</span>';
+  const errList = document.getElementById(key + '-errors');
+  errList.innerHTML = '';
+  (data.issues || []).forEach(issue => {
+    const div = document.createElement('div');
+    div.className = 'error-item';
+    div.textContent = issue;
+    errList.appendChild(div);
+  });
+}
+
+function buildAnnotatedHTML(text, annotations) {
+  let segments = [{ text, type: 'plain' }];
+  annotations.forEach(ann => {
+    const phrase = ann.phrase;
+    const next = [];
+    segments.forEach(seg => {
+      if (seg.type !== 'plain') { next.push(seg); return; }
+      const idx = seg.text.indexOf(phrase);
+      if (idx === -1) { next.push(seg); return; }
+      if (idx > 0) next.push({ text: seg.text.slice(0, idx), type: 'plain' });
+      next.push({ text: phrase, type: ann.type, note: ann.note });
+      const rest = seg.text.slice(idx + phrase.length);
+      if (rest) next.push({ text: rest, type: 'plain' });
+    });
+    segments = next;
+  });
+  return segments.map(seg => {
+    if (seg.type === 'plain') return escapeHTML(seg.text).replace(/\n/g, '<br>');
+    const cls = seg.type === 'error' ? 'err-highlight' : 'warn-highlight';
+    return `<mark class="${cls}" data-note="${escapeAttr(seg.note)}">${escapeHTML(seg.text)}</mark>`;
+  }).join('');
+}
+
+function getGrade(s) {
+  if (s >= 9)   return { label: 'Outstanding', bg: '#dcfce7', color: '#15803d' };
+  if (s >= 7.5) return { label: 'Excellent',   bg: '#dbeafe', color: '#1e40af' };
+  if (s >= 6)   return { label: 'Good',         bg: '#fef9c3', color: '#854d0e' };
+  if (s >= 4)   return { label: 'Average',      bg: '#ffedd5', color: '#9a3412' };
+  return               { label: 'Needs Work',   bg: '#fee2e2', color: '#991b1b' };
+}
+
+function escapeHTML(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escapeAttr(str) {
+  return (str || '').replace(/"/g, '&quot;');
+}
+
+function resetAll() {
+  document.getElementById('question-input').value = '';
+  document.getElementById('answer-input').value   = '';
+  document.getElementById('file-name-display').textContent = 'PDF or TXT supported';
+  document.getElementById('file-input').value = '';
+
+  const display = document.getElementById('answer-display');
+  display.classList.add('empty-state');
+  display.innerHTML = '<div class="empty-icon">◎</div><div>Evaluated answer with highlights<br>will appear here</div>';
+  document.getElementById('legend-row').style.display = 'none';
+  document.getElementById('scoring-area').classList.remove('visible');
+  ['grammar','content','structure'].forEach(k => {
+    document.getElementById(k + '-bar').style.width = '0%';
+  });
+}
+</script>
+</body>
+</html>
